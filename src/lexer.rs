@@ -34,6 +34,7 @@ fn preprocess(input: &str) -> String {
     IGNORE_RE.replace_all(input, "").to_string()
 }
 
+/// lex the given input string - returns a stack, so first-on last-off
 pub fn lex(input: &str) -> Vec<Token> {
     let preprocessed = preprocess(input);
 
@@ -63,6 +64,7 @@ pub fn lex(input: &str) -> Vec<Token> {
 
         res.push(token);
     }
+    res.reverse();
     res
 }
 
@@ -79,15 +81,15 @@ mod tests {
     fn lex_works() {
         let input = "def func(x) x + 1;";
         let tokenized = [
-            Token::Def,
-            Token::Ident("func".to_string()),
-            Token::OpenParen,
+            Token::Delimiter,
+            Token::Number(1.0),
+            Token::Operator("+".to_string()),
             Token::Ident("x".to_string()),
             Token::CloseParen,
             Token::Ident("x".to_string()),
-            Token::Operator("+".to_string()),
-            Token::Number(1.0),
-            Token::Delimiter,
+            Token::OpenParen,
+            Token::Ident("func".to_string()),
+            Token::Def,
         ];
         assert_eq!(lex(input), tokenized);
     }
