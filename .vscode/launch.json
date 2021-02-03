@@ -15,6 +15,18 @@
             "environment": [],
             "externalConsole": false,
             "preLaunchTask": "rust: cargo build"
+        },
+        {
+            "name": "(Windows) Test",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "target/debug/deps/wizarding_rs-55823aa2637dcff9.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "preLaunchTask": "rust: cargo build test"
         }
     ]
 }
