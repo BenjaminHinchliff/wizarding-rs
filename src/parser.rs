@@ -206,6 +206,21 @@ impl Parser {
         Ok(Prototype { name, args })
     }
 
+    fn parse_function(&self, input: &mut Vec<Token>) -> Result<ASTNode, ParserError> {
+        input.pop();
+        let proto = self.parse_prototype(input)?;
+        let body = self.parse_expr(input)?;
+        Ok(ASTNode::Function(Function {
+            prototype: proto,
+            body,
+        }))
+    }
+
+    fn parse_extern(&self, input: &mut Vec<Token>) -> Result<ASTNode, ParserError> {
+        input.pop();
+        Ok(ASTNode::Extern(self.parse_prototype(input)?))
+    }
+
     pub fn parse(&self, input: &mut Vec<Token>) -> Result<Vec<ASTNode>, ParserError> {
         let mut ast = Vec::new();
 
@@ -213,19 +228,11 @@ impl Parser {
             let cur_tok = input.last().unwrap();
 
             match cur_tok {
-                Token::Def => {
-                    input.pop();
-                    let proto = self.parse_prototype(input)?;
-                    let body = self.parse_expr(input)?;
-                    ast.push(ASTNode::Function(Function {
-                        prototype: proto,
-                        body,
-                    }));
-                }
+                Token::Def => ast.push(self.parse_function(input)?),
+                Token::Extern => ast.push(self.parse_extern(input)?),
                 Token::Delimiter => {
                     input.pop();
                 }
-                Token::Extern => unimplemented!(),
                 _ => unimplemented!(),
             };
         }
@@ -237,7 +244,19 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pretty_assertions::{assert_eq, assert_ne};
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn extern_parse_works() {
+        let parser = Parser::default();
+        let mut tokens = lex("extern sin(x);");
+        let res = parser.parse(&mut tokens).unwrap();
+        let target = vec![ASTNode::Extern(Prototype {
+            name: "sin".to_string(),
+            args: vec!["x".to_string()],
+        })];
+        assert_eq!(res, target);
+    }
 
     #[test]
     fn def_parse_works() {
@@ -274,11 +293,14 @@ mod tests {
         let input = "add(1, 2)";
         let mut tokens = lex(input);
         let res = parser.parse_expr(&mut tokens).unwrap();
-        assert_eq!(tokens.len(), 0);
         let target = Expression::Call(
             "add".to_string(),
             vec![Expression::Literal(1.0), Expression::Literal(2.0)],
         );
+        assert_eq!(res, target);
+        let mut tokens = lex("one()");
+        let res = parser.parse_expr(&mut tokens).unwrap();
+        let target = Expression::Call("one".to_string(), vec![]);
         assert_eq!(res, target);
     }
 
