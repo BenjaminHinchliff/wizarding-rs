@@ -93,11 +93,13 @@ impl Parser {
         let num = extract_token!(input.pop(), Token::Number(extract), extract);
         Ok(Expression::Literal(num))
     }
+
     fn parse_identifier(&self, input: &mut Vec<Token>) -> PartialParseResult {
         let ident = extract_token!(input.pop(), Token::Ident(extract), extract);
         if let Some(Token::OpenParen) = input.last() {
             let mut args = Vec::new();
             ensure_next!(input, Token::OpenParen);
+            // TODO: try to prevent code duplication with argument parsing
             if input.last() != Some(&Token::CloseParen) {
                 loop {
                     args.push(self.parse_expr(input)?);
