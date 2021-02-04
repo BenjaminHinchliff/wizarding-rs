@@ -1,4 +1,4 @@
-use core::f64;
+use std::fmt;
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -14,6 +14,14 @@ pub enum Token {
     Ident(String),
     Operator(String),
     Number(f64),
+}
+
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            tok => write!(f, "{:?}", tok),
+        }
+    }
 }
 
 lazy_static! {

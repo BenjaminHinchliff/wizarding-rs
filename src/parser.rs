@@ -32,10 +32,43 @@ pub enum ASTNode {
 pub enum ParserError {
     // TODO: add more context information
     #[error("invalid token {0}")]
-    InvalidToken(String),
+    InvalidToken(Token),
+    #[error("invalid operator {0}")]
+    InvalidOperator(String),
+    #[error("unexpected end of file")]
+    UnexpectedEOF,
 }
 
 pub type PartialParseResult = Result<Expression, ParserError>;
+
+macro_rules! ensure_next {
+    ($input:ident, $($next:expr),+) => {
+        match $input.last() {
+            Some(tok) if $(*tok != $next)||+ => return Err(ParserError::InvalidToken(tok.clone())),
+            None => return Err(ParserError::UnexpectedEOF),
+            _ => (),
+        }
+        $input.pop();
+    };
+}
+
+macro_rules! extract_token {
+    ($input:expr) => {
+        match $input {
+            Some(tok) => tok,
+            None => return Err(ParserError::UnexpectedEOF),
+        }
+    };
+    ($input:expr, $next:pat, $inner:expr) => {
+        match $input {
+            Some(tok) => match tok {
+                $next => $inner,
+                tok => return Err(ParserError::InvalidToken(tok.clone())),
+            },
+            None => return Err(ParserError::UnexpectedEOF),
+        }
+    };
+}
 
 #[derive(Debug, Clone)]
 pub struct Parser {
@@ -57,45 +90,49 @@ impl std::default::Default for Parser {
 
 impl Parser {
     fn parse_number(&self, input: &mut Vec<Token>) -> PartialParseResult {
-        if let Some(Token::Number(num)) = input.pop() {
-            Ok(Expression::Literal(num))
-        } else {
-            // TODO: clean up this logic a bit (macro?)
-            unreachable!()
-        }
+        let num = extract_token!(input.pop(), Token::Number(extract), extract);
+        Ok(Expression::Literal(num))
     }
-
     fn parse_identifier(&self, input: &mut Vec<Token>) -> PartialParseResult {
-        if let Some(Token::Ident(ident)) = input.pop() {
-            if let Some(Token::OpenParen) = input.last() {
-                unimplemented!()
-            } else {
-                Ok(Expression::Variable(ident.to_string()))
+        let ident = extract_token!(input.pop(), Token::Ident(extract), extract);
+        if let Some(Token::OpenParen) = input.last() {
+            let mut args = Vec::new();
+            ensure_next!(input, Token::OpenParen);
+            if input.last() != Some(&Token::CloseParen) {
+                loop {
+                    args.push(self.parse_expr(input)?);
+                    if input.last() != Some(&Token::Comma) {
+                        if input.last() == Some(&Token::CloseParen) {
+                            break;
+                        } else if let Some(tok) = input.last() {
+                            return Err(ParserError::InvalidToken(tok.clone()));
+                        } else {
+                            return Err(ParserError::UnexpectedEOF);
+                        }
+                    }
+                    input.pop();
+                }
             }
+            ensure_next!(input, Token::CloseParen);
+            Ok(Expression::Call(ident.to_string(), args))
         } else {
-            unreachable!()
+            Ok(Expression::Variable(ident.to_string()))
         }
     }
 
     fn parse_nested(&self, input: &mut Vec<Token>) -> PartialParseResult {
-        if input.last() != Some(&Token::OpenParen) {
-            return Err(ParserError::InvalidToken("(".to_string()));
-        }
-        input.pop();
+        ensure_next!(input, Token::OpenParen);
         let res = self.parse_expr(input)?;
-        if input.last() != Some(&Token::CloseParen) {
-            return Err(ParserError::InvalidToken(")".to_string()));
-        }
-        input.pop();
+        ensure_next!(input, Token::CloseParen);
         Ok(res)
     }
 
     fn parse_primary(&self, input: &mut Vec<Token>) -> PartialParseResult {
-        match input.last().unwrap() {
+        match extract_token!(input.last()) {
             Token::Number(_) => self.parse_number(input),
             Token::Ident(_) => self.parse_identifier(input),
             Token::OpenParen => self.parse_nested(input),
-            _ => unreachable!(),
+            tok => return Err(ParserError::InvalidToken(tok.clone())),
         }
     }
 
@@ -111,7 +148,7 @@ impl Parser {
             let (operator, precedence) = match input.last() {
                 Some(&Token::Operator(ref op)) => match self.operator_precedence.get(op) {
                     Some(pr) if *pr >= expr_precedence => (op.clone(), *pr),
-                    None => panic!(),
+                    None => return Err(ParserError::InvalidOperator(op.to_string())),
                     _ => break,
                 },
                 _ => break,
@@ -125,7 +162,7 @@ impl Parser {
                     Some(next_precedence) if precedence < *next_precedence => {
                         rhs = self.parse_rhs(input, precedence + 1, &rhs)?
                     }
-                    None => panic!(),
+                    None => return Err(ParserError::InvalidOperator(op.to_string())),
                     _ => (),
                 },
                 _ => (),
@@ -144,14 +181,48 @@ impl Parser {
         Ok(expr)
     }
 
-    pub fn parse(input: &mut Vec<Token>, settings: &Parser) -> Result<Vec<ASTNode>, ParserError> {
-        let ast = Vec::new();
+    fn parse_prototype(&self, input: &mut Vec<Token>) -> Result<Prototype, ParserError> {
+        let name = extract_token!(input.pop(), Token::Ident(ident), ident);
+        ensure_next!(input, Token::OpenParen);
+        let mut args = Vec::new();
+        if input.last() != Some(&Token::CloseParen) {
+            while let Some(Token::Ident(ident)) = input.pop() {
+                args.push(ident);
+                if input.last() != Some(&Token::Comma) {
+                    if input.last() == Some(&Token::CloseParen) {
+                        break;
+                    } else if let Some(tok) = input.last() {
+                        return Err(ParserError::InvalidToken(tok.clone()));
+                    } else {
+                        return Err(ParserError::UnexpectedEOF);
+                    }
+                }
+                input.pop();
+            }
+        }
+        ensure_next!(input, Token::CloseParen);
+        Ok(Prototype { name, args })
+    }
+
+    pub fn parse(&self, input: &mut Vec<Token>) -> Result<Vec<ASTNode>, ParserError> {
+        let mut ast = Vec::new();
 
         while !input.is_empty() {
             let cur_tok = input.last().unwrap();
 
-            let node = match cur_tok {
-                Token::Def => unimplemented!(),
+            match cur_tok {
+                Token::Def => {
+                    input.pop();
+                    let proto = self.parse_prototype(input)?;
+                    let body = self.parse_expr(input)?;
+                    ast.push(ASTNode::Function(Function {
+                        prototype: proto,
+                        body,
+                    }));
+                }
+                Token::Delimiter => {
+                    input.pop();
+                }
                 Token::Extern => unimplemented!(),
                 _ => unimplemented!(),
             };
@@ -165,6 +236,49 @@ impl Parser {
 mod tests {
     use super::*;
     use pretty_assertions::{assert_eq, assert_ne};
+
+    #[test]
+    fn def_parse_works() {
+        let parser = Parser::default();
+        let mut tokens = lex("def add(x, y) x + y;");
+        let res = parser.parse(&mut tokens).unwrap();
+        let target = vec![ASTNode::Function(Function {
+            prototype: Prototype {
+                name: "add".to_string(),
+                args: vec!["x".to_string(), "y".to_string()],
+            },
+            body: Expression::Binary(
+                "+".to_string(),
+                Box::new(Expression::Variable("x".to_string())),
+                Box::new(Expression::Variable("y".to_string())),
+            ),
+        })];
+        assert_eq!(res, target);
+        let mut tokens = lex("def one() 1.0;");
+        let res = parser.parse(&mut tokens).unwrap();
+        let target = vec![ASTNode::Function(Function {
+            prototype: Prototype {
+                name: "one".to_string(),
+                args: vec![],
+            },
+            body: Expression::Literal(1.0),
+        })];
+        assert_eq!(res, target);
+    }
+
+    #[test]
+    fn parse_call_works() {
+        let parser = Parser::default();
+        let input = "add(1, 2)";
+        let mut tokens = lex(input);
+        let res = parser.parse_expr(&mut tokens).unwrap();
+        assert_eq!(tokens.len(), 0);
+        let target = Expression::Call(
+            "add".to_string(),
+            vec![Expression::Literal(1.0), Expression::Literal(2.0)],
+        );
+        assert_eq!(res, target);
+    }
 
     #[test]
     fn parse_expr_works() {
@@ -186,5 +300,31 @@ mod tests {
             )),
         );
         assert_eq!(res, target);
+    }
+
+    #[test]
+    fn invalid_operator_works() {
+        let input = "x : 1";
+        let parser = Parser::default();
+        let mut tokens = lex(input);
+        let res = parser.parse_expr(&mut tokens);
+        assert_eq!(res, Err(ParserError::InvalidOperator(":".to_string())));
+    }
+
+    #[test]
+    fn invalid_token_works() {
+        let input = "(1 + )";
+        let parser = Parser::default();
+        let mut tokens = lex(input);
+        let res = parser.parse_expr(&mut tokens);
+        assert_eq!(res, Err(ParserError::InvalidToken(Token::CloseParen)));
+    }
+
+    #[test]
+    fn unexpected_eof_works() {
+        let parser = Parser::default();
+        let mut tokens = lex("1 + ");
+        let res = parser.parse_expr(&mut tokens);
+        assert_eq!(res, Err(ParserError::UnexpectedEOF));
     }
 }
