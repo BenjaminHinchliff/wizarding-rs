@@ -221,6 +221,16 @@ impl Parser {
         Ok(ASTNode::Extern(self.parse_prototype(input)?))
     }
 
+    fn parse_lambda(&self, input: &mut Vec<Token>) -> Result<ASTNode, ParserError> {
+        Ok(ASTNode::Function(Function {
+            prototype: Prototype {
+                name: "".to_string(),
+                args: vec![],
+            },
+            body: self.parse_expr(input)?,
+        }))
+    }
+
     pub fn parse(&self, input: &mut Vec<Token>) -> Result<Vec<ASTNode>, ParserError> {
         let mut ast = Vec::new();
 
@@ -233,7 +243,7 @@ impl Parser {
                 Token::Delimiter => {
                     input.pop();
                 }
-                _ => unimplemented!(),
+                _ => ast.push(self.parse_lambda(input)?),
             };
         }
 
@@ -245,6 +255,21 @@ impl Parser {
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn lamda_parse_works() {
+        let parser = Parser::default();
+        let mut tokens = lex("1;");
+        let res = parser.parse(&mut tokens).unwrap();
+        let target = vec![ASTNode::Function(Function {
+            prototype: Prototype {
+                name: "".to_string(),
+                args: vec![],
+            },
+            body: Expression::Literal(1.0),
+        })];
+        assert_eq!(res, target);
+    }
 
     #[test]
     fn extern_parse_works() {
