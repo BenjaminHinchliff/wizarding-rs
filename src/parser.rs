@@ -1,32 +1,7 @@
-use std::{char::ToLowercase, collections::HashMap, path::StripPrefixError};
+use std::collections::HashMap;
 
-use super::lexer::{lex, Token};
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Prototype {
-    pub name: String,
-    pub args: Vec<String>,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Expression {
-    Literal(f64),
-    Variable(String),
-    Binary(String, Box<Expression>, Box<Expression>),
-    Call(String, Vec<Expression>),
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Function {
-    pub prototype: Prototype,
-    pub body: Expression,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum ASTNode {
-    Extern(Prototype),
-    Function(Function),
-}
+use super::ast::*;
+use super::lexer::{self, Token};
 
 #[derive(Debug, PartialEq, Clone, thiserror::Error)]
 pub enum ParserError {
@@ -259,7 +234,7 @@ mod tests {
     #[test]
     fn lamda_parse_works() {
         let parser = Parser::default();
-        let mut tokens = lex("1;");
+        let mut tokens = lexer::lex("1;");
         let res = parser.parse(&mut tokens).unwrap();
         let target = vec![ASTNode::Function(Function {
             prototype: Prototype {
@@ -274,7 +249,7 @@ mod tests {
     #[test]
     fn extern_parse_works() {
         let parser = Parser::default();
-        let mut tokens = lex("extern sin(x);");
+        let mut tokens = lexer::lex("extern sin(x);");
         let res = parser.parse(&mut tokens).unwrap();
         let target = vec![ASTNode::Extern(Prototype {
             name: "sin".to_string(),
@@ -286,7 +261,7 @@ mod tests {
     #[test]
     fn def_parse_works() {
         let parser = Parser::default();
-        let mut tokens = lex("def add(x, y) x + y;");
+        let mut tokens = lexer::lex("def add(x, y) x + y;");
         let res = parser.parse(&mut tokens).unwrap();
         let target = vec![ASTNode::Function(Function {
             prototype: Prototype {
@@ -300,7 +275,7 @@ mod tests {
             ),
         })];
         assert_eq!(res, target);
-        let mut tokens = lex("def one() 1.0;");
+        let mut tokens = lexer::lex("def one() 1.0;");
         let res = parser.parse(&mut tokens).unwrap();
         let target = vec![ASTNode::Function(Function {
             prototype: Prototype {
@@ -316,14 +291,14 @@ mod tests {
     fn parse_call_works() {
         let parser = Parser::default();
         let input = "add(1, 2)";
-        let mut tokens = lex(input);
+        let mut tokens = lexer::lex(input);
         let res = parser.parse_expr(&mut tokens).unwrap();
         let target = Expression::Call(
             "add".to_string(),
             vec![Expression::Literal(1.0), Expression::Literal(2.0)],
         );
         assert_eq!(res, target);
-        let mut tokens = lex("one()");
+        let mut tokens = lexer::lex("one()");
         let res = parser.parse_expr(&mut tokens).unwrap();
         let target = Expression::Call("one".to_string(), vec![]);
         assert_eq!(res, target);
@@ -333,7 +308,7 @@ mod tests {
     fn parse_expr_works() {
         let input = "x + 1 * (2 - 3)";
         let parser = Parser::default();
-        let mut tokens = lex(input);
+        let mut tokens = lexer::lex(input);
         let res = parser.parse_expr(&mut tokens).unwrap();
         let target = Expression::Binary(
             "+".to_string(),
@@ -355,7 +330,7 @@ mod tests {
     fn invalid_operator_works() {
         let input = "x : 1";
         let parser = Parser::default();
-        let mut tokens = lex(input);
+        let mut tokens = lexer::lex(input);
         let res = parser.parse_expr(&mut tokens);
         assert_eq!(res, Err(ParserError::InvalidOperator(":".to_string())));
     }
@@ -364,7 +339,7 @@ mod tests {
     fn invalid_token_works() {
         let input = "(1 + )";
         let parser = Parser::default();
-        let mut tokens = lex(input);
+        let mut tokens = lexer::lex(input);
         let res = parser.parse_expr(&mut tokens);
         assert_eq!(res, Err(ParserError::InvalidToken(Token::CloseParen)));
     }
@@ -372,7 +347,7 @@ mod tests {
     #[test]
     fn unexpected_eof_works() {
         let parser = Parser::default();
-        let mut tokens = lex("1 + ");
+        let mut tokens = lexer::lex("1 + ");
         let res = parser.parse_expr(&mut tokens);
         assert_eq!(res, Err(ParserError::UnexpectedEOF));
     }
