@@ -224,6 +224,11 @@ impl Parser {
 
         Ok(ast)
     }
+
+    pub fn parse_str(&self, input: &str) -> Result<Vec<ASTNode>, ParserError> {
+        let mut tokens = lexer::lex(input);
+        self.parse(&mut tokens)
+    }
 }
 
 #[cfg(test)]
