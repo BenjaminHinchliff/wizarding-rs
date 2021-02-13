@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, iter};
 
 use inkwell::{
     builder::Builder,
@@ -98,10 +98,10 @@ impl<'a> Codegen<'a> {
     }
 
     fn compile_proto(&self, proto: &Prototype) -> Result<FunctionValue<'a>, CodegenError> {
-        let args_types = std::iter::repeat(self.context.f64_type())
+        let args_types: Vec<BasicTypeEnum> = iter::repeat(self.context.f64_type())
             .take(proto.args.len())
             .map(|f| f.into())
-            .collect::<Vec<BasicTypeEnum>>();
+            .collect();
         let args_types = args_types.as_slice();
 
         let fn_type = self.context.f64_type().fn_type(args_types, false);
@@ -177,6 +177,5 @@ mod tests {
         let mut codegen = Codegen::new(&context);
         codegen.codegen(&mut ast).unwrap();
         println!("{}", codegen.module.print_to_string().to_str().unwrap());
-        panic!();
     }
 }
