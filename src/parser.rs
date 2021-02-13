@@ -199,7 +199,7 @@ impl Parser {
     fn parse_lambda(&self, input: &mut Vec<Token>) -> Result<ASTNode, ParserError> {
         Ok(ASTNode::Function(Function {
             prototype: Prototype {
-                name: "".to_string(),
+                name: "lambda".to_string(),
                 args: vec![],
             },
             body: self.parse_expr(input)?,
@@ -243,7 +243,7 @@ mod tests {
         let res = parser.parse(&mut tokens).unwrap();
         let target = vec![ASTNode::Function(Function {
             prototype: Prototype {
-                name: "".to_string(),
+                name: "lambda".to_string(),
                 args: vec![],
             },
             body: Expression::Literal(1.0),
