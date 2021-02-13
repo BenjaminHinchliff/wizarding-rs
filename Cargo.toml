@@ -12,7 +12,6 @@ anyhow = "1.0.38"
 
 [dependencies.inkwell]
 git = "https://github.com/TheDan64/inkwell"
-branch = "master"
 features = ["llvm11-0"]
 rev = "a2db15b0bd1c06d71763585ae10d9ea4e775da0c"
 
