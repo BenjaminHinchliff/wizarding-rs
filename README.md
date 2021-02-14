@@ -6,7 +6,7 @@
 This is the home of what I would humbly call, literally the best programming language to exist. Now why is it great? Let me explain with a snippet
 
 ```wizarding
-🜙inc🜄x🜂x+1;inc🜄x🜂;
+🜹sin🜄x🜂;🜙thing🜄x🜂sin🜄x🜂*x;thing🜄2.0🜂;
 ```
 
 So, yeah you probably get the jist. It's just a kaleidoscope-esque (for now)
