@@ -171,7 +171,7 @@ mod tests {
     fn codegen_works() {
         let parser = Parser::default();
         let mut ast = parser
-            .parse_str("extern sin(x); def thing(x) sin(x) * x;")
+            .parse_str("🜹sin🜄x🜂;🜙thing🜄x🜂sin🜄x🜂*x;")
             .unwrap();
         let context = Context::create();
         let mut codegen = Codegen::new(&context);

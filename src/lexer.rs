@@ -26,15 +26,17 @@ impl fmt::Display for Token {
 
 lazy_static! {
     static ref IGNORE_RE: Regex = Regex::new(r"(?m)#.*$").unwrap();
-    static ref TOKEN_RE: Regex = Regex::new(concat!(
-        r"(?P<ident>\p{Alphabetic}\w*)|",
-        r"(?P<number>\d+\.?\d*)|",
-        r"(?P<delimiter>;)|",
-        r"(?P<oppar>\()|",
-        r"(?P<clpar>\))|",
-        r"(?P<comma>,)|",
+    static ref TOKEN_RE: Regex = Regex::new(&[
+        r"(?P<ident>\p{Alphabetic}\w*)",
+        r"(?P<extern>🜹)",
+        r"(?P<def>🜙)",
+        r"(?P<number>\d+\.?\d*)",
+        r"(?P<delimiter>;)",
+        r"(?P<oppar>🜄)",
+        r"(?P<clpar>🜂)",
+        r"(?P<comma>🜌)",
         r"(?P<operator>\S)"
-    ))
+    ].join("|"))
     .unwrap();
 }
 
@@ -49,11 +51,11 @@ pub fn lex(input: &str) -> Vec<Token> {
     let mut res = Vec::new();
     for cap in TOKEN_RE.captures_iter(&preprocessed) {
         let token = if let Some(ident) = cap.name("ident") {
-            match ident.as_str() {
-                "def" => Token::Def,
-                "extern" => Token::Extern,
-                inner => Token::Ident(inner.to_string()),
-            }
+            Token::Ident(ident.as_str().to_string())
+        } else if let Some(_) = cap.name("extern") {
+            Token::Extern
+        } else if let Some(_) = cap.name("def") {
+            Token::Def
         } else if let Some(inner) = cap.name("number") {
             Token::Number(inner.as_str().parse().expect("failed to parse number!"))
         } else if let Some(op) = cap.name("operator") {
@@ -87,7 +89,7 @@ mod tests {
 
     #[test]
     fn lex_works() {
-        let input = "def func(x) x + 1;";
+        let input = "🜙add🜄x🜂x+1.0;";
         let tokenized = [
             Token::Delimiter,
             Token::Number(1.0),
@@ -96,7 +98,7 @@ mod tests {
             Token::CloseParen,
             Token::Ident("x".to_string()),
             Token::OpenParen,
-            Token::Ident("func".to_string()),
+            Token::Ident("add".to_string()),
             Token::Def,
         ];
         assert_eq!(lex(input), tokenized);

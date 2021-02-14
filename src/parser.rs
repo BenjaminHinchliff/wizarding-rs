@@ -254,7 +254,7 @@ mod tests {
     #[test]
     fn extern_parse_works() {
         let parser = Parser::default();
-        let mut tokens = lexer::lex("extern sin(x);");
+        let mut tokens = lexer::lex("🜹sin🜄x🜂;");
         let res = parser.parse(&mut tokens).unwrap();
         let target = vec![ASTNode::Extern(Prototype {
             name: "sin".to_string(),
@@ -266,7 +266,7 @@ mod tests {
     #[test]
     fn def_parse_works() {
         let parser = Parser::default();
-        let mut tokens = lexer::lex("def add(x, y) x + y;");
+        let mut tokens = lexer::lex("🜙add🜄x🜌y🜂x+y;");
         let res = parser.parse(&mut tokens).unwrap();
         let target = vec![ASTNode::Function(Function {
             prototype: Prototype {
@@ -280,7 +280,7 @@ mod tests {
             ),
         })];
         assert_eq!(res, target);
-        let mut tokens = lexer::lex("def one() 1.0;");
+        let mut tokens = lexer::lex("🜙one🜄🜂1.0;");
         let res = parser.parse(&mut tokens).unwrap();
         let target = vec![ASTNode::Function(Function {
             prototype: Prototype {
@@ -295,7 +295,7 @@ mod tests {
     #[test]
     fn parse_call_works() {
         let parser = Parser::default();
-        let input = "add(1, 2)";
+        let input = "add🜄1🜌2🜂";
         let mut tokens = lexer::lex(input);
         let res = parser.parse_expr(&mut tokens).unwrap();
         let target = Expression::Call(
@@ -303,7 +303,7 @@ mod tests {
             vec![Expression::Literal(1.0), Expression::Literal(2.0)],
         );
         assert_eq!(res, target);
-        let mut tokens = lexer::lex("one()");
+        let mut tokens = lexer::lex("one🜄🜂");
         let res = parser.parse_expr(&mut tokens).unwrap();
         let target = Expression::Call("one".to_string(), vec![]);
         assert_eq!(res, target);
@@ -311,7 +311,7 @@ mod tests {
 
     #[test]
     fn parse_expr_works() {
-        let input = "x + 1 * (2 - 3)";
+        let input = "x + 1 * 🜄2 - 3🜂";
         let parser = Parser::default();
         let mut tokens = lexer::lex(input);
         let res = parser.parse_expr(&mut tokens).unwrap();
@@ -342,7 +342,7 @@ mod tests {
 
     #[test]
     fn invalid_token_works() {
-        let input = "(1 + )";
+        let input = "🜄1 + 🜂";
         let parser = Parser::default();
         let mut tokens = lexer::lex(input);
         let res = parser.parse_expr(&mut tokens);
