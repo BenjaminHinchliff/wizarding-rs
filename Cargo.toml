@@ -1,14 +1,16 @@
 [package]
-name = "wizarding-rs"
+name = "wizarding-jit"
 version = "0.1.0"
 authors = ["Benjamin Hinchliff <benjamin.hinchliff@gmail.com>"]
 edition = "2018"
+description = "the wizarding programming language jit compiler"
 
 [dependencies]
 regex = "1"
 lazy_static = "1.4"
 thiserror = "1"
 anyhow = "1.0.38"
+clap = "2.33.3"
 
 [dependencies.inkwell]
 git = "https://github.com/TheDan64/inkwell"
